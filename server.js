@@ -32,7 +32,7 @@ mongoose.connection
 //================================
 const GrocerySchema = new mongoose.Schema({
     item: String,
-    date: Date,
+    date: String,
     urgent: Boolean,
     //to assiociate list with the user
     createdById: String,
@@ -66,12 +66,40 @@ app.get("/grocery", async (req, res) => {
 //================================
 //       Routes-Delete Page
 //================================
+app.delete("/grocery/:id", async (req, res) => {
+    try {
+        res.json(await Grocery.findByIdAndRemove(req.params.id));
+    } catch (error) {
+        res.status(400).json(error);
+    }
+});
 //================================
 //       Routes-Update Page
 //================================
+app.put("/grocery/:id", async (req, res) => {
+    try {
+        //send all grocery
+        res.json(
+            await Grocery.findByIdAndUpdate(req.params.id, req.body, {
+                new: true,
+            })
+        );
+    } catch (error) {
+        //send error
+        console.log(error);
+        res.status(400).json(error);
+    }
+});
 //================================
-//       Routes-Landing Page
+//       Routes-Create Page
 //================================
+app.post("/grocery", async (req, res) => {
+    try {
+        res.json(await Grocery.create(req.body));
+    } catch (error) {
+        res.status(400).json(error);
+    }
+});
 
 //================================
 //         Web-listeners
