@@ -46,6 +46,36 @@ const Grocery = mongoose.model("Grocery", GrocerySchema);
 app.use(cors()); // to prevent cors error when cross-origin requests are made
 app.use(morgan("dev")); //logging the calls
 app.use(express.json()); //parse json bodies
+
+//================================
+//   Google Firebase Middleware
+//================================
+
+const admin = require("firebase-admin");
+
+const serviceAccount = require("./grocery-list-b4997-firebase-adminsdk-e8dnl-a724ef5fba.json");
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+});
+app.use(async function (req, res, next) {
+    const token = req.get("Authorization");
+    // next makes the next information to work in this case Routes!
+    if (!token) return next();
+    const user = await admin.auth().verifyIdToken(token.replace("Bearer ", ""));
+    if (user) {
+        req.user = user;
+    } else {
+        return res.status(401).json({ error: "token invalid" });
+    }
+    next();
+});
+
+function isAuthenticated(req, res, next) {
+    if (req.user) return next();
+    res.status(401).json({ error: "Please login first" });
+}
+
 //================================
 //       Routes-Landing Page
 //================================
@@ -57,8 +87,9 @@ app.get("/", (req, res) => {
 //       Routes-Index Page
 //================================
 app.get("/grocery", async (req, res) => {
+    const query = req.query.uid ? { createdById: req.query.uid } : {};
     try {
-        res.json(await Grocery.find({}));
+        res.json(await Grocery.find(query));
     } catch (error) {
         res.status(400).json(error);
     }
@@ -93,8 +124,9 @@ app.put("/grocery/:id", async (req, res) => {
 //================================
 //       Routes-Create Page
 //================================
-app.post("/grocery", async (req, res) => {
+app.post("/grocery", isAuthenticated, async (req, res) => {
     try {
+        req.body.createdById = req.user.uid;
         res.json(await Grocery.create(req.body));
     } catch (error) {
         res.status(400).json(error);
